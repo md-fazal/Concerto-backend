@@ -6,13 +6,12 @@ from spotipy.oauth2 import SpotifyOAuth, SpotifyClientCredentials
 from requests import post
 from .models import SpotifyToken
 from datetime import datetime, timedelta
-import spotdl
-import subprocess
+from spotdl import Spotdl
 # Create your views here.
 
 SPOTIFY_CLIENT_ID = "2f7fb0d053fd41d19455705c92ea0135"
 SPOTIFY_CLIENT_SECRET = "f1a587f0b84a4f409816b8b14cd2a397"
-REDIRECT_URI = "http://127.0.0.1:8000/spotify/redirect"
+REDIRECT_URI = "http://mdfazal.pythonanywhere.com/redirect"
 SCOPE = 'user-read-playback-state user-modify-playback-state user-read-currently-playing web-playback user-top-read'
 sf = None
 
@@ -33,7 +32,7 @@ def authorize(request):
     
     
 def spotify_callback(request):
-    sf = SpotifyOAuth(SPOTIFY_CLIENT_ID,SPOTIFY_CLIENT_SECRET, scope=SCOPE, redirect_uri="http://127.0.0.1:8000/spotify/redirect", show_dialog=True)
+    sf = SpotifyOAuth(SPOTIFY_CLIENT_ID,SPOTIFY_CLIENT_SECRET, scope=SCOPE, redirect_uri="http://mdfazal.pythonanywhere.com/redirect", show_dialog=True)
     code = sf.parse_response_code(url=request.build_absolute_uri())
     response = post('https://accounts.spotify.com/api/token', data={
         'grant_type': 'authorization_code',
@@ -136,11 +135,12 @@ def initiate_playback(request, track_uri=None, user_id=None):
 
 
 def spdl(request, track_uri):
-    import spotdl
     spotify_url = "https://open.spotify.com/track/" + track_uri.split(':')[-1]
-    url = subprocess.run(['spotdl',"url", spotify_url] , check=True, capture_output=True, text=True).stdout
-    # print(url)
-    return JsonResponse({"ddl": url.split("\n")[1]})
+    s = Spotdl(client_id=SPOTIFY_CLIENT_ID, client_secret=SPOTIFY_CLIENT_SECRET)
+    songs = s.search([spotify_url])
+    data=s.downloader.search(songs[0])
+    url = s.downloader.audio_providers[0].get_download_metadata(data)["url"]
+    return JsonResponse({"ddl": url})
 
 # def create_stream(to_stream_url):
 #     import ffmpeg_streaming
